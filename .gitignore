@@ -8,3 +8,7 @@ captures/
 .externalNativeBuild
 .cxx
 .kotlin/
+
+# Generated /brag video output (composition projects, music, renders)
+brag-output/
+brag-output-*/

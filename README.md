@@ -6,6 +6,15 @@ You start a load, LoadAlert runs the timer in the background, and when the wash 
 checks whether you are actually at the laundry room. If you are not, it keeps reminding you,
 getting louder the longer you ignore it, until you confirm you have collected the load.
 
+## Demo
+
+A 46-second walkthrough: start a load, the wash running in the background, the reminder
+firing, and the cycle recorded in history.
+
+[![LoadAlert demo](docs/demo/loadalert-demo.jpg)](https://github.com/AlexWeber64/LoadAlert/raw/main/docs/demo/loadalert-demo.mp4)
+
+<sub>Click the image to play. Source: <a href="docs/demo/loadalert-demo.mp4">docs/demo/loadalert-demo.mp4</a></sub>
+
 ## Screenshots
 
 Real screens from a physical device. The laundry room pin and roommate are demo values.
