@@ -35,6 +35,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.loadalert.data.model.LaundrySettings
 import com.loadalert.data.model.MessagingApp
 import com.loadalert.ui.components.InfoText
+import com.loadalert.ui.components.DurationChips
 import com.loadalert.ui.components.OptionChips
 import com.loadalert.ui.components.SwitchRow
 import com.loadalert.ui.home.formatCoordinates
@@ -136,11 +137,10 @@ private fun DurationStep(state: OnboardingUiState, viewModel: OnboardingViewMode
         Spacer(Modifier.height(8.dp))
         InfoText("This is only the default. You can change it for any individual load.")
         Spacer(Modifier.height(20.dp))
-        OptionChips(
+        DurationChips(
             options = LaundrySettings.DURATION_CHOICES,
             selected = state.durationMinutes,
             onSelect = viewModel::setDuration,
-            label = { "$it min" },
         )
     }
 }

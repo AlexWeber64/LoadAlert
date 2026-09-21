@@ -40,9 +40,12 @@ import com.loadalert.data.model.LaundrySettings
 import com.loadalert.data.model.MessagingApp
 import com.loadalert.data.model.QuietHours
 import com.loadalert.ui.components.InfoText
+import com.loadalert.messaging.RoommateMessenger
+import com.loadalert.ui.components.DurationChips
 import com.loadalert.ui.components.OptionChips
 import com.loadalert.ui.components.SectionCard
 import com.loadalert.ui.components.SwitchRow
+import com.loadalert.ui.components.ThinDivider
 import com.loadalert.ui.home.formatCoordinates
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -122,12 +125,22 @@ private fun DefaultsSection(settings: LaundrySettings, viewModel: SettingsViewMo
         title = "Default wash length",
         subtitle = "Pre-selected on the home screen. You can still change it per load.",
     ) {
-        OptionChips(
-            options = LaundrySettings.DURATION_CHOICES,
-            selected = settings.defaultDurationMinutes,
-            onSelect = viewModel::setDefaultDuration,
-            label = { "$it min" },
-        )
+        Column {
+            DurationChips(
+                options = LaundrySettings.DURATION_CHOICES,
+                selected = settings.defaultDurationMinutes,
+                onSelect = viewModel::setDefaultDuration,
+                dialogTitle = "Custom default length",
+            )
+            ThinDivider()
+            SwitchRow(
+                title = "Track washer number",
+                description = "Ask which machine the load is in, and name it when you " +
+                    "message your roommate.",
+                checked = settings.trackWasherNumber,
+                onCheckedChange = viewModel::setTrackWasherNumber,
+            )
+        }
     }
 }
 
@@ -274,8 +287,20 @@ private fun RoommateSection(settings: LaundrySettings, viewModel: SettingsViewMo
             }
 
             Spacer(Modifier.height(12.dp))
+            val previewWasher = if (settings.trackWasherNumber) {
+                settings.lastWasherLabel.ifBlank { "3" }
+            } else {
+                ""
+            }
             Text(
-                "Message: \"Started a load, ready in ${settings.defaultDurationMinutes} min\"",
+                "On start: \"" +
+                    RoommateMessenger.startMessage(settings.defaultDurationMinutes, previewWasher) +
+                    "\"",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Mid-wash: \"" + RoommateMessenger.updateMessage(12, previewWasher) + "\"",
                 style = MaterialTheme.typography.bodyMedium,
             )
             Spacer(Modifier.height(12.dp))

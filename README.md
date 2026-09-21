@@ -29,18 +29,29 @@ Real screens from a physical device. The laundry room pin and roommate are demo 
 
 ## The core flow
 
-1. **Start.** Pick a duration on the home screen (or use the saved default) and tap
-   *Start Laundry*. LoadAlert pins the laundry room from the saved setup location, or captures
-   the current GPS fix if this is the first load. If a roommate is configured, your messaging
-   app opens with *"Started a load, ready in N min"* ready to send.
+1. **Start.** Pick a duration on the home screen -- one of the presets, the saved default, or
+   **Custom** for any length from 1 to 600 minutes -- and tap *Start Laundry*. LoadAlert pins
+   the laundry room from the saved setup location, or captures the current GPS fix if this is
+   the first load. If a roommate is configured, your messaging app opens with
+   *"Started a load, ready in N min"* ready to send.
 2. **Wait.** A `WorkManager` job is scheduled for the moment the wash finishes. Nothing needs
-   to stay on screen.
+   to stay on screen. While it runs, **Text \<name\> an update** sends a fresh
+   *"Laundry update: still washing, ready in N min"* using the time left at the moment you
+   tap it, not the duration you started with.
 3. **Wash finishes.** The laundry-room geofence is registered and a one-shot location check
    runs. If you are already there, the cycle closes silently. If not, you get a high-priority
    *"Laundry's done - go grab it"* notification with an **I got it** action.
 4. **Keep checking.** Every *reminder interval* (default 5 min) LoadAlert re-checks. After the
    configured number of ignored checks it escalates: alarm-style sound, longer vibration, and
    optionally a shorter interval.
+
+### Optional: washer number
+
+Turn on **Track washer number** in Settings and the home screen gains a washer field. Whatever
+you enter rides along with the cycle and is named in both roommate messages -- *"Started a load
+in washer 3, ready in 45 min"*, *"Laundry update: still washing in washer 3, ready in 12 min"*.
+The last machine you used is pre-filled next time, and the field can be left blank per load.
+With the setting off, the field is hidden and the messages read exactly as they did before.
 
 A cycle ends when any of these happens:
 
@@ -183,5 +194,10 @@ start, WorkManager scheduling, the "already there" silent finish, the reminder n
 both actions, "I got it", Room history persistence, and the roommate SMS intent arriving in the
 messaging app with the body pre-filled.
 
-Not yet verified on hardware: real geofence enter/exit transitions, which need physical movement
-in and out of the radius. The one-shot location check that backstops them is verified.
+Not yet verified on hardware:
+
+- Real geofence enter/exit transitions, which need physical movement in and out of the radius.
+  The one-shot location check that backstops them is verified.
+- The custom wash length, the mid-cycle roommate update, and the washer number. These build
+  clean and are covered by JVM unit tests (message wording, input clamping, round-up of the
+  minutes remaining), but have not yet been run on a device.

@@ -19,8 +19,25 @@ import java.net.URLEncoder
  */
 class RoommateMessenger(private val context: Context) {
 
-    fun buildStartMessageIntent(contact: RoommateContact, durationMinutes: Int): Intent? {
-        val message = startMessage(durationMinutes)
+    fun buildStartMessageIntent(
+        contact: RoommateContact,
+        durationMinutes: Int,
+        washerLabel: String = "",
+    ): Intent? = buildIntent(contact, startMessage(durationMinutes, washerLabel))
+
+    /**
+     * The mid-cycle "where is it up to" message, sent from the running-cycle card.
+     *
+     * [minutesRemaining] is recomputed at the moment the button is tapped, so the roommate
+     * gets the time left now rather than the duration the load started with.
+     */
+    fun buildUpdateMessageIntent(
+        contact: RoommateContact,
+        minutesRemaining: Int,
+        washerLabel: String = "",
+    ): Intent? = buildIntent(contact, updateMessage(minutesRemaining, washerLabel))
+
+    private fun buildIntent(contact: RoommateContact, message: String): Intent {
         val intent = when (contact.app) {
             MessagingApp.SMS -> smsIntent(contact.contactValue, message)
             MessagingApp.WHATSAPP -> whatsAppIntent(contact.contactValue, message)
@@ -33,9 +50,6 @@ class RoommateMessenger(private val context: Context) {
         // failing silently.
         return (resolved ?: chooserIntent(message)).addNewTaskFlagIfNeeded()
     }
-
-    fun startMessage(durationMinutes: Int): String =
-        "Started a load, ready in $durationMinutes min"
 
     /** True when the chosen app is actually installed, used to warn during setup. */
     fun isAppInstalled(app: MessagingApp): Boolean {
@@ -99,5 +113,26 @@ class RoommateMessenger(private val context: Context) {
 
     private fun Intent.addNewTaskFlagIfNeeded(): Intent = apply {
         if (context !is android.app.Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+
+    /**
+     * The message wording. Free of Android types so the UI can preview the exact string the
+     * roommate will receive, and so it can be unit-tested without an emulator.
+     */
+    companion object {
+
+        fun startMessage(durationMinutes: Int, washerLabel: String = ""): String =
+            "Started a load${inWasher(washerLabel)}, ready in $durationMinutes min"
+
+        fun updateMessage(minutesRemaining: Int, washerLabel: String = ""): String =
+            if (minutesRemaining > 0) {
+                "Laundry update: still washing${inWasher(washerLabel)}, ready in $minutesRemaining min"
+            } else {
+                "Laundry update: the load${inWasher(washerLabel)} is done"
+            }
+
+        /** " in washer 3", or nothing at all when the user is not tracking machines. */
+        private fun inWasher(washerLabel: String): String =
+            if (washerLabel.isBlank()) "" else " in washer ${washerLabel.trim()}"
     }
 }

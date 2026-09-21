@@ -38,6 +38,7 @@ class CycleStateRepository(private val context: Context) {
         val IGNORED_CHECKS = intPreferencesKey("ignored_checks")
         val ARRIVED_AFTER_READY = booleanPreferencesKey("arrived_after_ready")
         val REMINDER_QUEUED = booleanPreferencesKey("reminder_queued")
+        val WASHER_LABEL = stringPreferencesKey("washer_label")
     }
 
     val state: Flow<CycleState> = context.cycleDataStore.data.map { prefs ->
@@ -60,6 +61,7 @@ class CycleStateRepository(private val context: Context) {
             ignoredChecks = prefs[Keys.IGNORED_CHECKS] ?: 0,
             arrivedAfterReady = prefs[Keys.ARRIVED_AFTER_READY] ?: false,
             reminderQueued = prefs[Keys.REMINDER_QUEUED] ?: false,
+            washerLabel = prefs[Keys.WASHER_LABEL].orEmpty(),
         )
     }
 
@@ -81,6 +83,7 @@ class CycleStateRepository(private val context: Context) {
             prefs[Keys.IGNORED_CHECKS] = cycle.ignoredChecks
             prefs[Keys.ARRIVED_AFTER_READY] = cycle.arrivedAfterReady
             prefs[Keys.REMINDER_QUEUED] = cycle.reminderQueued
+            prefs[Keys.WASHER_LABEL] = cycle.washerLabel
         }
     }
 

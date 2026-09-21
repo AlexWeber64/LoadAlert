@@ -95,11 +95,37 @@ data class LaundrySettings(
     val escalation: EscalationSettings = EscalationSettings(),
     val quietHours: QuietHours = QuietHours(),
     val maxCycleMinutes: Int = 180,
+    /** Opt-in: ask which machine the load went into, and name it in the roommate message. */
+    val trackWasherNumber: Boolean = false,
+    /** The machine used last time, pre-filled so a regular user does not retype it. */
+    val lastWasherLabel: String = "",
 ) {
     companion object {
         val DURATION_CHOICES = listOf(20, 25, 30, 35, 40, 45, 50, 55, 60, 75, 90, 105, 120)
         val INTERVAL_CHOICES = listOf(2, 3, 5, 10, 15, 20, 30)
         val MAX_CYCLE_CHOICES = listOf(60, 90, 120, 180, 240, 360)
         val RADIUS_CHOICES = listOf(50f, 75f, 100f, 150f, 200f)
+
+        /** Bounds for a hand-typed wash length. One minute is the floor WorkManager can honour. */
+        const val MIN_DURATION_MINUTES = 1
+        const val MAX_DURATION_MINUTES = 600
+
+        /** Machines are labelled like "3" or "B2"; long enough for both, short enough to read. */
+        const val MAX_WASHER_LABEL_LENGTH = 4
     }
 }
+
+/** Clamps a hand-typed wash length into the range the scheduler can actually honour. */
+fun coerceDurationMinutes(minutes: Int): Int = minutes.coerceIn(
+    LaundrySettings.MIN_DURATION_MINUTES,
+    LaundrySettings.MAX_DURATION_MINUTES,
+)
+
+/**
+ * Normalises a washer label for storage and for dropping into a message.
+ *
+ * Punctuation and whitespace are stripped rather than rejected so that "#3" and " 3 " both
+ * become "3"; an unusable label collapses to blank, which every caller treats as "not set".
+ */
+fun sanitizeWasherLabel(raw: String): String =
+    raw.filter { it.isLetterOrDigit() }.take(LaundrySettings.MAX_WASHER_LABEL_LENGTH).uppercase()

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
@@ -18,6 +19,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -35,9 +37,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.loadalert.data.model.CycleState
 import com.loadalert.data.model.LaundrySettings
+import com.loadalert.messaging.RoommateMessenger
 import com.loadalert.ui.components.BigCountdown
+import com.loadalert.ui.components.DurationChips
 import com.loadalert.ui.components.InfoText
-import com.loadalert.ui.components.OptionChips
 import com.loadalert.ui.components.SectionCard
 import com.loadalert.ui.permissions.PermissionRequestCard
 import com.loadalert.ui.permissions.missingPermissions
@@ -95,14 +98,17 @@ fun HomeScreen(
         if (state.cycle.isActive) {
             ActiveCycleCard(
                 cycle = state.cycle,
+                settings = state.settings,
                 now = now,
                 onCollected = viewModel::markCollected,
                 onCancel = viewModel::cancelCycle,
+                onTextRoommate = viewModel::textRoommateUpdate,
             )
         } else {
             StartCycleCard(
                 state = state,
                 onDurationChange = viewModel::setDuration,
+                onWasherChange = viewModel::setWasherLabel,
                 onStart = viewModel::startLaundry,
             )
         }
@@ -112,7 +118,13 @@ fun HomeScreen(
             onCaptureHere = viewModel::captureCurrentLocationAsLaundryRoom,
         )
 
-        RoommateCard(settings = state.settings, duration = state.selectedDurationMinutes)
+        if (!state.cycle.isActive) {
+            RoommateCard(
+                settings = state.settings,
+                duration = state.selectedDurationMinutes,
+                washerLabel = state.washerLabel,
+            )
+        }
     }
 }
 
@@ -120,6 +132,7 @@ fun HomeScreen(
 private fun StartCycleCard(
     state: HomeUiState,
     onDurationChange: (Int) -> Unit,
+    onWasherChange: (String) -> Unit,
     onStart: () -> Unit,
 ) {
     SectionCard(
@@ -128,12 +141,22 @@ private fun StartCycleCard(
             "${state.settings.defaultDurationMinutes} min.",
     ) {
         Column {
-            OptionChips(
+            DurationChips(
                 options = LaundrySettings.DURATION_CHOICES,
                 selected = state.selectedDurationMinutes,
                 onSelect = onDurationChange,
-                label = { "$it min" },
             )
+            if (state.settings.trackWasherNumber) {
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = state.washerLabel,
+                    onValueChange = onWasherChange,
+                    label = { Text("Washer number (optional)") },
+                    singleLine = true,
+                    supportingText = { Text("Included in the message to your roommate.") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             Spacer(Modifier.height(16.dp))
             Button(
                 onClick = onStart,
@@ -152,9 +175,11 @@ private fun StartCycleCard(
 @Composable
 private fun ActiveCycleCard(
     cycle: CycleState,
+    settings: LaundrySettings,
     now: Long,
     onCollected: () -> Unit,
     onCancel: () -> Unit,
+    onTextRoommate: () -> Unit,
 ) {
     val remaining = (cycle.readyAtEpochMs - now).coerceAtLeast(0L)
     val ready = remaining == 0L
@@ -180,6 +205,10 @@ private fun ActiveCycleCard(
                     "Ready at " + formatClock(cycle.readyAtEpochMs)
                 },
             )
+            if (cycle.washerLabel.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                InfoText("Washer ${cycle.washerLabel}")
+            }
             if (ready && cycle.ignoredChecks > 0) {
                 Spacer(Modifier.height(8.dp))
                 InfoText("Reminders sent: ${cycle.ignoredChecks}")
@@ -192,6 +221,17 @@ private fun ActiveCycleCard(
                 OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) {
                     Text("Cancel cycle")
                 }
+            }
+            // Mid-cycle heads-up. The time is read when tapped, so it is always current.
+            settings.roommate?.let { roommate ->
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick = onTextRoommate, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Text ${roommate.name} an update")
+                }
+                Spacer(Modifier.height(4.dp))
+                InfoText("\"" + updatePreview(cycle, now) + "\"")
             }
             Spacer(Modifier.height(8.dp))
             InfoText("Gives up at " + formatClock(cycle.deadlineEpochMs) + ".")
@@ -225,19 +265,24 @@ private fun LaundryRoomCard(settings: LaundrySettings, onCaptureHere: () -> Unit
 }
 
 @Composable
-private fun RoommateCard(settings: LaundrySettings, duration: Int) {
+private fun RoommateCard(settings: LaundrySettings, duration: Int, washerLabel: String) {
     val roommate = settings.roommate ?: return
+    val washer = if (settings.trackWasherNumber) washerLabel else ""
     SectionCard(
         title = "Roommate heads-up",
         subtitle = "Sent to ${roommate.name} via ${roommate.app.displayName} when you start.",
     ) {
         Column {
-            Text("\"Started a load, ready in $duration min\"")
+            Text("\"" + RoommateMessenger.startMessage(duration, washer) + "\"")
             Spacer(Modifier.height(8.dp))
             InfoText(roommate.app.caveat)
         }
     }
 }
+
+/** Exactly what the mid-cycle button will send, recomputed as the countdown ticks. */
+private fun updatePreview(cycle: CycleState, now: Long): String =
+    RoommateMessenger.updateMessage(cycle.minutesRemaining(now), cycle.washerLabel)
 
 private fun formatRemaining(millis: Long): String {
     val totalSeconds = TimeUnit.MILLISECONDS.toSeconds(millis)
