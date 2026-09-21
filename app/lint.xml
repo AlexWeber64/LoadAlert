@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!--
+      Lint suggests folding mipmap-anydpi-v26 into mipmap-anydpi because minSdk is 26.
+      Following that advice breaks the build: AAPT2 will not link a manifest icon reference
+      whose only variant lives in a bare "anydpi" folder, so the -v26 qualifier stays.
+    -->
+    <issue id="ObsoleteSdkInt">
+        <ignore path="src/main/res/mipmap-anydpi-v26" />
+    </issue>
+</lint>

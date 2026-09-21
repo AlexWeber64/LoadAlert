@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">LoadAlert</string>
+    <string name="widget_label">Start Laundry</string>
+    <string name="widget_description">One tap to start a laundry cycle with your default wash time.</string>
+</resources>
