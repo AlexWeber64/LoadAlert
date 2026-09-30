@@ -11,7 +11,7 @@ getting louder the longer you ignore it, until you confirm you have collected th
 A 46-second walkthrough: start a load, the wash running in the background, the reminder
 firing, and the cycle recorded in history.
 
-[![LoadAlert demo](docs/demo/loadalert-demo.jpg)](https://github.com/AlexWeber64/LoadAlert/raw/main/docs/demo/loadalert-demo.mp4)
+[![LoadAlert demo](docs/demo/loadalert-demo.jpg)](docs/demo/loadalert-demo.mp4)
 
 <sub>Click the image to play. Source: <a href="docs/demo/loadalert-demo.mp4">docs/demo/loadalert-demo.mp4</a></sub>
 
@@ -29,8 +29,8 @@ Real screens from a physical device. The laundry room pin and roommate are demo 
 
 ## The core flow
 
-1. **Start.** Pick a duration on the home screen -- one of the presets, the saved default, or
-   **Custom** for any length from 1 to 600 minutes -- and tap *Start Laundry*. LoadAlert pins
+1. **Start.** Pick a duration on the home screen (one of the presets, the saved default, or
+   **Custom** for any length from 1 to 600 minutes) and tap *Start Laundry*. LoadAlert pins
    the laundry room from the saved setup location, or captures the current GPS fix if this is
    the first load. If a roommate is configured, your messaging app opens with
    *"Started a load, ready in N min"* ready to send.
@@ -48,8 +48,8 @@ Real screens from a physical device. The laundry room pin and roommate are demo 
 ### Optional: washer number
 
 Turn on **Track washer number** in Settings and the home screen gains a washer field. Whatever
-you enter rides along with the cycle and is named in both roommate messages -- *"Started a load
-in washer 3, ready in 45 min"*, *"Laundry update: still washing in washer 3, ready in 12 min"*.
+you enter rides along with the cycle and is named in both roommate messages: *"Started a load
+in washer 3, ready in 45 min"* and *"Laundry update: still washing in washer 3, ready in 12 min"*.
 The last machine you used is pre-filled next time, and the field can be left blank per load.
 With the setting off, the field is hidden and the messages read exactly as they did before.
 
