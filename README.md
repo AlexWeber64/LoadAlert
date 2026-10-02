@@ -1,5 +1,7 @@
 # LoadAlert
 
+[![pipeline status](https://gitlab.com/AlexWeber64/LoadAlert/badges/main/pipeline.svg)](https://gitlab.com/AlexWeber64/LoadAlert/-/pipelines)
+
 An Android app that reminds you to pick your laundry up out of a shared laundry room.
 
 You start a load, LoadAlert runs the timer in the background, and when the wash finishes it
