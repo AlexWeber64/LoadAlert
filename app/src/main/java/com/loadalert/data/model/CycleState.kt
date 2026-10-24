@@ -39,6 +39,8 @@ data class CycleState(
     val arrivedAfterReady: Boolean = false,
     /** A reminder was suppressed by quiet hours and should fire once the window closes. */
     val reminderQueued: Boolean = false,
+    /** Which machine this load is in, or blank when the user is not tracking that. */
+    val washerLabel: String = "",
 ) {
     val isActive: Boolean get() = cycleId != NO_CYCLE
 
@@ -46,6 +48,15 @@ data class CycleState(
 
     fun millisRemaining(now: Long = System.currentTimeMillis()): Long =
         (readyAtEpochMs - now).coerceAtLeast(0L)
+
+    /**
+     * Whole minutes left on the wash, rounded up. Telling a roommate "ready in 0 min" while the
+     * machine is still running would be wrong, so any part-minute counts as one.
+     */
+    fun minutesRemaining(now: Long = System.currentTimeMillis()): Int {
+        val millis = millisRemaining(now)
+        return if (millis == 0L) 0 else ((millis + 59_999L) / 60_000L).toInt()
+    }
 
     companion object {
         const val NO_CYCLE = 0L

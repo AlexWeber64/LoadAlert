@@ -10,6 +10,8 @@ import com.loadalert.data.history.HistoryRepository
 import com.loadalert.data.model.CycleOutcome
 import com.loadalert.data.model.CycleState
 import com.loadalert.data.model.LaundryLocation
+import com.loadalert.data.model.coerceDurationMinutes
+import com.loadalert.data.model.sanitizeWasherLabel
 import com.loadalert.data.settings.SettingsRepository
 import com.loadalert.location.GeofenceManager
 import com.loadalert.location.LocationClient
@@ -57,12 +59,22 @@ class CycleCoordinator(
      * The laundry room position comes from setup when it exists; otherwise we capture the
      * current fix and remember it, which is the "I'm standing there now" path taken from Home.
      */
-    suspend fun startCycle(durationMinutes: Int? = null): StartResult {
+    suspend fun startCycle(
+        durationMinutes: Int? = null,
+        washerLabel: String? = null,
+    ): StartResult {
         val existing = cycleRepository.current()
         if (existing.isActive) return StartResult.AlreadyRunning(existing)
 
         val settings = settingsRepository.current()
-        val duration = (durationMinutes ?: settings.defaultDurationMinutes).coerceAtLeast(1)
+        val duration = coerceDurationMinutes(durationMinutes ?: settings.defaultDurationMinutes)
+
+        // The machine only travels with the cycle when the user opted into tracking it.
+        val washer = if (settings.trackWasherNumber) {
+            sanitizeWasherLabel(washerLabel ?: settings.lastWasherLabel)
+        } else {
+            ""
+        }
 
         val location = settings.laundryLocation ?: captureAndRemember() ?: return StartResult.NoLocation
 
@@ -76,17 +88,34 @@ class CycleCoordinator(
             deadlineEpochMs = CyclePolicy.deadlineFor(now, readyAt, settings),
             location = location,
             geofenceRadiusMeters = settings.geofenceRadiusMeters,
+            washerLabel = washer,
         )
         cycleRepository.save(cycle)
         notificationHelper.createChannels()
         scheduler.scheduleWashComplete(readyAt - now)
         refreshWidget()
+        if (washer.isNotBlank()) settingsRepository.setLastWasherLabel(washer)
 
         val messagingIntent = settings.roommate?.let {
-            RoommateMessenger(appContext).buildStartMessageIntent(it, duration)
+            RoommateMessenger(appContext).buildStartMessageIntent(it, duration, washer)
         }
         Log.i(TAG, "Cycle ${cycle.cycleId} started, ready in $duration min")
         return StartResult.Started(cycle, messagingIntent)
+    }
+
+    /**
+     * Builds the mid-cycle "still going" message for the running load, or null when there is
+     * no cycle or no roommate configured. The time left is read at call time, not at start.
+     */
+    suspend fun buildRoommateUpdateIntent(): Intent? {
+        val cycle = cycleRepository.current()
+        if (!cycle.isActive) return null
+        val roommate = settingsRepository.current().roommate ?: return null
+        return RoommateMessenger(appContext).buildUpdateMessageIntent(
+            contact = roommate,
+            minutesRemaining = cycle.minutesRemaining(),
+            washerLabel = cycle.washerLabel,
+        )
     }
 
     private suspend fun captureAndRemember(): LaundryLocation? =

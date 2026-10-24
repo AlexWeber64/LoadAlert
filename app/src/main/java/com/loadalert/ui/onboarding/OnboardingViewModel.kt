@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.loadalert.data.model.LaundryLocation
 import com.loadalert.data.model.MessagingApp
 import com.loadalert.data.model.RoommateContact
+import com.loadalert.data.model.coerceDurationMinutes
 import com.loadalert.di.container
 import com.loadalert.location.LocationPermissions
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -62,7 +63,8 @@ class OnboardingViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    fun setDuration(minutes: Int) = _state.update { it.copy(durationMinutes = minutes) }
+    fun setDuration(minutes: Int) =
+        _state.update { it.copy(durationMinutes = coerceDurationMinutes(minutes)) }
 
     fun setRoommateName(value: String) = _state.update { it.copy(roommateName = value) }
 

@@ -8,6 +8,7 @@ import com.loadalert.data.model.LaundrySettings
 import com.loadalert.data.model.MessagingApp
 import com.loadalert.data.model.QuietHours
 import com.loadalert.data.model.RoommateContact
+import com.loadalert.data.model.coerceDurationMinutes
 import com.loadalert.di.container
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.SharingStarted
@@ -27,7 +28,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val settings: StateFlow<LaundrySettings> = repository.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LaundrySettings())
 
-    fun setDefaultDuration(minutes: Int) = launchEdit { repository.setDefaultDuration(minutes) }
+    fun setDefaultDuration(minutes: Int) = launchEdit {
+        repository.setDefaultDuration(coerceDurationMinutes(minutes))
+    }
+
+    fun setTrackWasherNumber(enabled: Boolean) = launchEdit {
+        repository.setTrackWasherNumber(enabled)
+    }
 
     fun setReminderInterval(minutes: Int) = launchEdit { repository.setReminderInterval(minutes) }
 

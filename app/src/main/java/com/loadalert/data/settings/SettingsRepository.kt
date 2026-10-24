@@ -16,6 +16,7 @@ import com.loadalert.data.model.LaundrySettings
 import com.loadalert.data.model.MessagingApp
 import com.loadalert.data.model.QuietHours
 import com.loadalert.data.model.RoommateContact
+import com.loadalert.data.model.sanitizeWasherLabel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -44,6 +45,8 @@ class SettingsRepository(private val context: Context) {
         val QUIET_START = intPreferencesKey("quiet_hours_start")
         val QUIET_END = intPreferencesKey("quiet_hours_end")
         val MAX_CYCLE = intPreferencesKey("max_cycle_minutes")
+        val TRACK_WASHER = booleanPreferencesKey("track_washer_number")
+        val LAST_WASHER = stringPreferencesKey("last_washer_label")
     }
 
     val settings: Flow<LaundrySettings> = context.settingsDataStore.data.map { it.toSettings() }
@@ -92,6 +95,8 @@ class SettingsRepository(private val context: Context) {
                 endMinuteOfDay = this[Keys.QUIET_END] ?: defaults.quietHours.endMinuteOfDay,
             ),
             maxCycleMinutes = this[Keys.MAX_CYCLE] ?: defaults.maxCycleMinutes,
+            trackWasherNumber = this[Keys.TRACK_WASHER] ?: defaults.trackWasherNumber,
+            lastWasherLabel = this[Keys.LAST_WASHER] ?: defaults.lastWasherLabel,
         )
     }
 
@@ -135,6 +140,13 @@ class SettingsRepository(private val context: Context) {
     }
 
     suspend fun setMaxCycleMinutes(minutes: Int) = edit { it[Keys.MAX_CYCLE] = minutes }
+
+    suspend fun setTrackWasherNumber(enabled: Boolean) = edit { it[Keys.TRACK_WASHER] = enabled }
+
+    /** Remembers the machine used on the last load so the next one is pre-filled. */
+    suspend fun setLastWasherLabel(label: String) = edit {
+        it[Keys.LAST_WASHER] = sanitizeWasherLabel(label)
+    }
 
     private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         context.settingsDataStore.edit(block)

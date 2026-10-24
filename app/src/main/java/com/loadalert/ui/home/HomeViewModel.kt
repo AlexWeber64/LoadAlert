@@ -6,6 +6,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.loadalert.data.model.CycleState
 import com.loadalert.data.model.LaundrySettings
+import com.loadalert.data.model.coerceDurationMinutes
+import com.loadalert.data.model.sanitizeWasherLabel
 import com.loadalert.di.container
 import com.loadalert.domain.CycleCoordinator
 import kotlinx.coroutines.channels.Channel
@@ -25,6 +27,8 @@ data class HomeUiState(
     val cycle: CycleState = CycleState.NONE,
     val selectedDurationMinutes: Int = LaundrySettings().defaultDurationMinutes,
     val isStarting: Boolean = false,
+    /** What the washer field is showing before the load starts. */
+    val washerLabel: String = "",
 )
 
 /** One-shot things the screen has to do that a ViewModel cannot do itself. */
@@ -39,6 +43,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val coordinator: CycleCoordinator = container.cycleCoordinator
 
     private val durationOverride = MutableStateFlow<Int?>(null)
+    private val washerOverride = MutableStateFlow<String?>(null)
     private val starting = MutableStateFlow(false)
 
     private val events = Channel<HomeEvent>(Channel.BUFFERED)
@@ -52,13 +57,16 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         container.settingsRepository.settings,
         container.cycleRepository.state,
         durationOverride,
+        washerOverride,
         starting,
-    ) { settings, cycle, override, isStarting ->
+    ) { settings, cycle, override, washer, isStarting ->
         HomeUiState(
             settings = settings,
             cycle = cycle,
             selectedDurationMinutes = override ?: settings.defaultDurationMinutes,
             isStarting = isStarting,
+            // Falls back to the machine used last time so a regular user just taps Start.
+            washerLabel = washer ?: settings.lastWasherLabel,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
@@ -72,7 +80,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setDuration(minutes: Int) {
-        durationOverride.value = minutes
+        durationOverride.value = coerceDurationMinutes(minutes)
+    }
+
+    fun setWasherLabel(label: String) {
+        washerOverride.value = sanitizeWasherLabel(label)
     }
 
     fun startLaundry() {
@@ -80,9 +92,14 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         starting.value = true
         viewModelScope.launch {
             try {
-                when (val result = coordinator.startCycle(durationOverride.value)) {
+                val result = coordinator.startCycle(
+                    durationMinutes = durationOverride.value,
+                    washerLabel = washerOverride.value,
+                )
+                when (result) {
                     is CycleCoordinator.StartResult.Started -> {
                         durationOverride.value = null
+                        washerOverride.value = null
                         result.messagingIntent?.let { events.send(HomeEvent.LaunchMessaging(it)) }
                     }
 
@@ -99,6 +116,18 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 }
             } finally {
                 starting.value = false
+            }
+        }
+    }
+
+    /** Mid-cycle "still going" message, using the time left at the moment of the tap. */
+    fun textRoommateUpdate() {
+        viewModelScope.launch {
+            val intent = coordinator.buildRoommateUpdateIntent()
+            if (intent == null) {
+                events.send(HomeEvent.ShowMessage("Add a roommate in Settings first."))
+            } else {
+                events.send(HomeEvent.LaunchMessaging(intent))
             }
         }
     }
